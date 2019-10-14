@@ -44,7 +44,7 @@
                                                         </v-list-item-content>
                                                     </template>
                                                 </v-list-item>
-                                                <v-divider v-if="index + 1 < events.length" :key="index"></v-divider>
+                                                <v-divider v-if="index < events.length - 1" :key="index"></v-divider>
                                             </template>
                                     </v-slide-y-transition>
                                 </v-list>
@@ -61,9 +61,8 @@
                                 <v-btn text>Game Version: {{ gameVersion }}</v-btn>
                                 <v-btn text>Game Build: {{ gameBuild }}</v-btn>
                             </v-card>
-                                                            <v-checkbox color="orange" v-model="followJournal"
-                                                                label="Follow events"></v-checkbox>
-
+                            <v-checkbox color="orange" v-model="followJournal"
+                                label="Follow events"></v-checkbox>
                             <v-card class="pa-3 mx-auto" v-if="selectedEvent">
                                 <div class="headline orange--text">{{ selectedEvent.event }} <small class="subtitle-2 white--text">{{ selectedEvent.timestamp }}</small></div>
                                 <v-simple-table>
@@ -75,7 +74,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <tr v-for="(value, key) in selectedEvent" :key="key">
+                                            <tr v-for="(value, key) in selectedEvent" :key="value.timestamp">
                                                 <td>{{ key }}</td>
                                                 <td><pre>{{ value}}</pre></td>
                                             </tr>
@@ -112,6 +111,7 @@
                 },
             }),
             data: {
+                eventsBuffer: [],
                 events: [],
                 loaded: false,
                 loading: false,
@@ -121,7 +121,7 @@
                 selectedEventId: null,
                 timeout: null,
                 fullJournal: true,
-                followJournal: true
+                followJournal: false,
             },
             computed: {
                 extensionStatus() {
@@ -129,9 +129,6 @@
                 },
                 selectedEvent() {
                     return this.events[this.selectedEventId]
-                },
-                eventsReverse() {
-                    return this.events.reverse()
                 }
             },
             mounted() {
@@ -146,10 +143,23 @@
                                 case 'loaded':
                                     this.loading = false;
                                     this.loaded = true;
+                                    // Empty buffer
+                                    var interval = setInterval(() => {
+                                        var buffered = this.eventsBuffer.shift()
+                                        this.parseEvent(buffered)
+                                        if (this.eventsBuffer.length <= 0){
+                                            clearInterval(interval)
+                                        }
+                                    }, 0);
                                     break
                                 case 'journal':
-                                    if (this.loaded || this.fullJournal && !this.loaded)
+                                    console.log(event.data.event)
+                                    if (this.loaded) {
                                         this.parseEvent(event.data.event)
+                                    }
+                                    else {
+                                        this.eventsBuffer.push(event.data.event)
+                                    }
                                     break;
                             }
                         })
@@ -168,13 +178,15 @@
                             this.gameBuild = event.build
                             break
                         case 'FSDJump':
-                            this.currentSystem = event.StarSystem
-                            break
                         case 'Location':
+                        case 'SupercruiseEntry':
+                        case 'SupercruiseExit':
                             this.currentSystem = event.StarSystem
                             break;
                     }
-                    this.selectedEventId = this.events.indexOf(event)
+                    if (this.followJournal) {
+                        this.selectedEventId = this.events.indexOf(event)
+                    }
                 }
             },
             filters: {
