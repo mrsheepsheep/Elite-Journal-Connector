@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Elite Journal Connector</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.5.95/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.1.3/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+
+<body>
+    <div id="app">
+        <v-app dark="true">
+            <v-content>
+                <v-app-bar>
+                    <v-toolbar-title>Elite Journal Connector</v-toolbar-title>
+                    <v-spacer></v-spacer>
+                    <v-toolbar-items>
+                        <v-btn text :color="loaded ? `green` : `red`">{{ extensionStatus }}</v-btn>
+                        <v-btn text color="orange">{{ currentSystem }}</v-btn>         
+                    </v-toolbar-items>
+                    <v-spacer></v-spacer>
+                    <v-switch color="orange" v-model="fullJournal" hide-details label="Load Journal at startup" :disabled="loaded"></v-switch>
+
+                </v-app-bar>
+                <v-container fluid v-if="loaded">
+                    <v-row>
+                        <v-col cols="4">
+                            <v-card max-height="900px" elevation="2" flat class="overflow-y-auto" v-if="events.length > 0">
+                                <v-list two-items>
+                                    <v-slide-y-transition class="py-0" group tag="v-list-item-group"
+                                       active-class="orange--text">
+                                            <template v-for="(event, index) in events">
+                                                <v-list-item :key="event.timestamp" @click="selectedEventId = index" color="orange">
+                                                    <template v-slot:default="{ active }">
+                                                        <v-list-item-content>
+                                                            <v-list-item-title v-text="event.event"></v-list-item-title>
+                                                            <v-list-item-subtitle class="text--primary" v-text="event.timestamp">
+                                                            </v-list-item-subtitle>
+                                                        </v-list-item-content>
+                                                    </template>
+                                                </v-list-item>
+                                                <v-divider v-if="index + 1 < events.length" :key="index"></v-divider>
+                                            </template>
+                                    </v-slide-y-transition>
+                                </v-list>
+                            </v-card>
+                            <v-card v-else class="pa-4 mx-auto">
+                                Data will appear here.
+                            </v-card>
+                        </v-col>
+                        <v-col cols="8">
+                            <v-card class="pa-3 mx-auto mb-3">
+                                <v-btn @click="clear" icon>
+                                    <v-icon>mdi-delete</v-icon>
+                                </v-btn>
+                                <v-btn text>Game Version: {{ gameVersion }}</v-btn>
+                                <v-btn text>Game Build: {{ gameBuild }}</v-btn>
+                            </v-card>
+                                                            <v-checkbox color="orange" v-model="followJournal"
+                                                                label="Follow events"></v-checkbox>
+
+                            <v-card class="pa-3 mx-auto" v-if="selectedEvent">
+                                <div class="headline orange--text">{{ selectedEvent.event }} <small class="subtitle-2 white--text">{{ selectedEvent.timestamp }}</small></div>
+                                <v-simple-table>
+                                    <template v-slot:default>
+                                        <thead>
+                                            <tr>
+                                                <th class="text-left">Key</th>
+                                                <th class="text-left">Value</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(value, key) in selectedEvent" :key="key">
+                                                <td>{{ key }}</td>
+                                                <td><pre>{{ value}}</pre></td>
+                                            </tr>
+                                        </tbody>
+                                    </template>
+                                </v-simple-table>
+                            </v-card>
+                        </v-col>
+                    </v-row>
+                </v-container>
+                <v-container v-else>
+                    <v-row>
+                        <v-col>
+                            <p class="text-center">No data</p>
+                        </v-col>
+                    </v-row>
+                </v-container>
+                <v-overlay :value="loading && !loaded">
+                    <v-progress-circular indeterminate size="64"></v-progress-circular>
+                </v-overlay>
+            </v-content>
+        </v-app>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.1.3/dist/vuetify.js"></script>
+    <script>
+        Vue.config.devtools = true;
+        var vm = new Vue({
+            el: '#app',
+            vuetify: new Vuetify({
+                theme: {
+                    dark: true
+                },
+            }),
+            data: {
+                events: [],
+                loaded: false,
+                loading: false,
+                currentSystem: 'Unknown System',
+                gameBuild: '?',
+                gameVersion: '?',
+                selectedEventId: null,
+                timeout: null,
+                fullJournal: true,
+                followJournal: true
+            },
+            computed: {
+                extensionStatus() {
+                    return this.loaded ? 'ONLINE' : 'OFFLINE'
+                },
+                selectedEvent() {
+                    return this.events[this.selectedEventId]
+                },
+                eventsReverse() {
+                    return this.events.reverse()
+                }
+            },
+            mounted() {
+                window.addEventListener("message", (event) => {
+                    if (event.data.source === 'Elite Journal Connector') {
+                        this.$nextTick(() => {
+                            switch (event.data.command) {
+                                case 'loading':
+                                    this.loading = true;
+                                    this.loaded = false;
+                                    break;
+                                case 'loaded':
+                                    this.loading = false;
+                                    this.loaded = true;
+                                    break
+                                case 'journal':
+                                    if (this.loaded || this.fullJournal && !this.loaded)
+                                        this.parseEvent(event.data.event)
+                                    break;
+                            }
+                        })
+                    }
+                })
+            },
+            methods: {
+                clear() {
+                    this.events = []
+                },
+                parseEvent(event) {
+                    this.events.push(event)
+                    switch (event.event) {
+                        case 'Fileheader':
+                            this.gameVersion = event.gameversion
+                            this.gameBuild = event.build
+                            break
+                        case 'FSDJump':
+                            this.currentSystem = event.StarSystem
+                            break
+                        case 'Location':
+                            this.currentSystem = event.StarSystem
+                            break;
+                    }
+                    this.selectedEventId = this.events.indexOf(event)
+                }
+            },
+            filters: {
+                pretty: function (value) {
+                    return JSON.stringify(value, null, 2);
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>

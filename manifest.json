@@ -1,0 +1,24 @@
+{
+    "manifest_version": 2,
+    "name": "Elite Journal Connector",
+    "permissions": [
+        "activeTab",
+        "webRequest",
+        "storage",
+        "background",
+        "https://127.0.0.1/*",
+        "http://127.0.0.1/*",
+        "file://C:/Users/%userprofile%/Saved Games/Frontier Developments/Elite Dangerous"
+    ],
+    "version": "0.0.1",
+    "background": {
+        "persistent": true,
+        "scripts": ["jquery.js", "background.js"]
+    },
+    "browser_action": {
+
+    },
+    "icons": {
+        "96": "icon.png"
+    }
+}
