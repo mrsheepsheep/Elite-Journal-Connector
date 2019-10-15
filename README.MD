@@ -27,6 +27,20 @@ window.addEventListener("message", (event) => {
 })
 ```
 
+# Ideas
+## Better communication API
+
+Web page listens for extension injection using window.addEventlistener
+
+Extension injects (content script) and sends a message (content script) to the web page (page script) using window.postMessage
+
+It also waits (content script) for commands from the web page, for example to fetch all journal data
+
+Web page (script page) receives the message and asks for initial journal data using window.postMessage (sent to content)
+
+Content then asks background to get the data and background sends it back as a whole.
+
+
 # ToDos
 
 * Configure elite folder location

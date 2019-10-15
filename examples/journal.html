@@ -132,33 +132,39 @@
                 }
             },
             mounted() {
-                window.addEventListener("message", (event) => {
-                    if (event.data.source === 'Elite Journal Connector') {
+                window.addEventListener("message", (message) => {
+                    if (message.source != window)
+                        return
+                    if (message.data.origin && event.data.origin === 'Elite Dangerous Web Journal') {
                         this.$nextTick(() => {
-                            switch (event.data.command) {
-                                case 'loading':
-                                    this.loading = true;
-                                    this.loaded = false;
-                                    break;
-                                case 'loaded':
+                            switch (message.data.eventName) {
+                                case 'load':
+                                    this.loaded = true
+                                    this.loading = true
+                                    window.postMessage({ // Ask for initial, full journal data
+                                        origin: 'Elite Dangerous Web Journal',
+                                        eventName: 'getJournal'
+                                    })
+                                    break
+                                case 'journal':
+                                    const journal = message.data.data
                                     this.loading = false;
-                                    this.loaded = true;
-                                    // Empty buffer
+
+                                    this.eventsBuffer = journal
+
                                     var interval = setInterval(() => {
                                         var buffered = this.eventsBuffer.shift()
                                         this.parseEvent(buffered)
-                                        if (this.eventsBuffer.length <= 0){
-                                            clearInterval(interval)
-                                        }
+                                        if (this.eventsBuffer.length <= 0){ clearInterval(interval) }
                                     }, 0);
-                                    break
-                                case 'journal':
-                                    console.log(event.data.event)
-                                    if (this.loaded) {
-                                        this.parseEvent(event.data.event)
+                                    break;
+                                case 'event':
+                                    const event = message.data.data
+                                    if (this.loading) {
+                                        this.eventsBuffer.push(event)
                                     }
                                     else {
-                                        this.eventsBuffer.push(event.data.event)
+                                        this.parseEvent(event)
                                     }
                                     break;
                             }

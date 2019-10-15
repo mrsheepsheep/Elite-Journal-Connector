@@ -52,22 +52,38 @@ findJournal((journalFile) => {
                 differenceJSON.pop()
                 differenceJSON = differenceJSON.map(e => JSON.parse(e))
                 // Todo identify unique tab
+
+                 for (id in differenceJSON) {
+                    chrome.runtime.sendMessage({
+                        eventName: 'event',
+                        data: differenceJSON[id]
+                    })
+                }
+                /*
                 for (index in demandingTabs) {
                     for (id in differenceJSON) {
                         console.log('Sending', differenceJSON[id])
                         chrome.tabs.sendMessage(demandingTabs[index], {
-                            event: "journal",
+                            eventName: "event",
                             data: differenceJSON[id]
                         });
                     }
                 }
+                */
             }
-            
             t.lastRes = res;
         })
     }, 1000);
 })
 
+// Wait for getJournal command from content script (requested by page script)
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.getJournal) {
+        sendResponse({
+            journal: fulljournal
+        })
+    }
+})
 
 // Button Action handler
 const demandingTabs = []
@@ -79,9 +95,3 @@ chrome.browserAction.onClicked.addListener((tab) => {
         })
     }
 });
-
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    sendResponse({
-        fulljournal
-    })
-})
