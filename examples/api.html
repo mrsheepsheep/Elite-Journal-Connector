@@ -20,13 +20,16 @@
             if (message.data.origin && message.data.origin === 'Elite Dangerous Web Journal') { // Simple check
                 console.log('Received event:', message.data.eventName)
                 switch (message.data.eventName) {
-                    case 'load': // Message received when the user clicks the extension. Script is injected and ready to communicate.
-                        console.log('Sending getJournal event')
+                    case 'enabled': // Message received when the user clicks the extension. Script is injected and ready to communicate.
+                        console.log('Enabled. Sending getJournal event')
                         window.postMessage({ // Ask for initial, full journal data
                             origin: 'Elite Dangerous Web Journal',
                             eventName: 'getJournal'
                         })
                         break;
+                    case 'disabled':
+                        console.log('Extension has been disabled.')
+                        break
                     case 'journal':
                         const journal = message.data.data // Full journal, array of events
                         console.log('Received initial journal data')

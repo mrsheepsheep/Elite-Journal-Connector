@@ -78,20 +78,78 @@ findJournal((journalFile) => {
 
 // Wait for getJournal command from content script (requested by page script)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.getJournal) {
+    console.log(request)
+    if (request.ready) {
+        // Check if website is toggled or not
+        if (enabledWebsites.includes(request.hostname)) {
+            chrome.tabs.sendMessage(sender.tab.id, {
+                eventName: 'enabled'
+            })
+        }
+    }
+    else if (request.getJournal) {
         sendResponse({
             journal: fulljournal
         })
     }
+    return true
 })
 
 // Button Action handler
-const demandingTabs = []
-chrome.browserAction.onClicked.addListener((tab) => {
-    if (!demandingTabs.includes(tab.id)) {
-        demandingTabs.push(tab.id)
-        chrome.tabs.executeScript(tab.id, {
-            file: "/content.js"
+// Todo better tab handling, automatic load, trusted sources via option panel !
+// Checkbox for every site, or just enable/disable on click
+
+var enabledWebsites = []
+// Check existing trusted websites
+
+chrome.storage.local.get(['enabled_websites'], (result) => {
+    if (!result['enabled_websites']){
+        chrome.storage.local.set({
+            'enabled_websites': []
         })
+    } else {
+        enabledWebsites = result['enabled_websites']
     }
+})
+
+chrome.browserAction.onClicked.addListener((tab) => {
+    const hostname = new URL(tab.url).hostname
+    chrome.storage.local.get(['enabled_websites'], (result) => {
+        if (enabledWebsites.includes(hostname)) {
+            enabledWebsites.splice(enabledWebsites.indexOf(hostname), 1)
+            console.log('Disabling', hostname)
+        } else {
+            enabledWebsites.push(hostname)
+            console.log('Enabling', hostname)
+        }
+
+        chrome.storage.local.set({
+            'enabled_websites': enabledWebsites
+        })
+
+        chrome.tabs.sendMessage(tab.id, {
+            eventName: enabledWebsites.includes(hostname) ? 'enabled' : 'disabled',
+            data: null
+        })
+        checkActiveTab()
+    })
 });
+
+function checkActiveTab() {
+    chrome.tabs.getSelected(null, (tab) => {
+        const hostname = new URL(tab.url).hostname
+        chrome.browserAction.setIcon({
+            path: {
+                "96": enabledWebsites.includes(hostname) ? "icon.png" : "icon_disabled.png"
+            }
+        })
+    })
+}
+// Detect tab change
+chrome.tabs.onActivated.addListener(() => {
+    checkActiveTab()
+})
+
+checkActiveTab()
+
+// Todo EDDN contribution :o

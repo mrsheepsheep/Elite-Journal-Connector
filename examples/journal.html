@@ -111,7 +111,6 @@
                 },
             }),
             data: {
-                eventsBuffer: [],
                 events: [],
                 loaded: false,
                 loading: false,
@@ -119,9 +118,8 @@
                 gameBuild: '?',
                 gameVersion: '?',
                 selectedEventId: null,
-                timeout: null,
                 fullJournal: true,
-                followJournal: false,
+                followJournal: false
             },
             computed: {
                 extensionStatus() {
@@ -138,7 +136,7 @@
                     if (message.data.origin && event.data.origin === 'Elite Dangerous Web Journal') {
                         this.$nextTick(() => {
                             switch (message.data.eventName) {
-                                case 'load':
+                                case 'enabled':
                                     this.loaded = true
                                     this.loading = true
                                     window.postMessage({ // Ask for initial, full journal data
@@ -146,26 +144,22 @@
                                         eventName: 'getJournal'
                                     })
                                     break
+                                case 'disabled':
+                                    this.loaded = false
+                                    this.loading = false
+                                    this.events = []
+                                    console.log('Extension has been disabled')
+                                    break
                                 case 'journal':
                                     const journal = message.data.data
                                     this.loading = false;
-
-                                    this.eventsBuffer = journal
-
-                                    var interval = setInterval(() => {
-                                        var buffered = this.eventsBuffer.shift()
-                                        this.parseEvent(buffered)
-                                        if (this.eventsBuffer.length <= 0){ clearInterval(interval) }
-                                    }, 0);
+                                    this.events = journal
+                                    // Parse all events
+                                    journal.map(e => this.parseEvent(e))
                                     break;
                                 case 'event':
                                     const event = message.data.data
-                                    if (this.loading) {
-                                        this.eventsBuffer.push(event)
-                                    }
-                                    else {
-                                        this.parseEvent(event)
-                                    }
+                                    this.parseEvent(event)
                                     break;
                             }
                         })
