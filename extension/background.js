@@ -72,10 +72,12 @@ findJournal((journalFile) => {
 // Button Action handler
 const demandingTabs = []
 chrome.browserAction.onClicked.addListener((tab) => {
-    demandingTabs.push(tab.id)
-    chrome.tabs.executeScript(tab.id, {
-        file: "/content.js"
-    })
+    if (!demandingTabs.includes(tab.id)) {
+        demandingTabs.push(tab.id)
+        chrome.tabs.executeScript(tab.id, {
+            file: "/content.js"
+        })
+    }
 });
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
