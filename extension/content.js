@@ -9,20 +9,22 @@ function sendMessage(eventName, data) {
     })
 }
 
+// Listen for background-script messages. This will only work for single events, as full journal is sent as a response below
+
 function initialize() {
     // Short function to reduce redundancy
     sendMessage('enabled')
 
-    // Listen for background-script messages. This will only work for single events, as full journal is sent as a response below
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.eventName === 'event')
-            sendMessage(request.eventName, request.event)
-        return true
+        console.log(request)
+        if (request.eventName === 'event') {
+            sendMessage(request.eventName, request.data)
+        }
     });
-
+    
     // Listen for page-script messages
     window.addEventListener("message", (message) => {
-        console.log(message)
+        //console.log(message)
         if (message.source != window){
             console.log('Received untrusted message...')
             return // Do not trust other origins
@@ -56,9 +58,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         case 'enabled':
             initialize()
         case 'disabled':
-            sendMessage(request.eventName, request.event)
+            sendMessage(request.eventName)
             break
         default: break
     }
-    return true
 });

@@ -7,6 +7,7 @@
         "storage",
         "tabs",
         "background",
+        "notifications",
         "https://127.0.0.1/*",
         "http://127.0.0.1/*",
         "file://C:/Users/%userprofile%/Saved Games/Frontier Developments/Elite Dangerous"
