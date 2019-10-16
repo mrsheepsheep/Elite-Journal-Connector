@@ -65,13 +65,6 @@ function initialize(){
             title: 'Elite Dangerous Web Connector',
             message: 'New journal file found. ' + journalFile.split('/').reverse()[0]
         })
-    }, () => {
-        chrome.notifications.create({
-            type: 'basic',
-            iconUrl: 'icon_disabled.png',
-            title: 'Elite Dangerous Web Connector',
-            message: 'Could not find a journal file ! Check your settings.'
-        })
     })
     var lastRes = ''
     var t = this;
@@ -101,12 +94,29 @@ function initialize(){
 initialize()
 
 // Every minute, check if there is a new file and re-initialize
-setInterval(() => {
+var check = setInterval(() => {
     findJournal((file) => {
         if (file !== journalFile) {
             clearInterval(updateInterval)
             initialize()
         }
+    }, () => {
+        clearInterval(check)
+        clearInterval(updateInterval)
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icon_disabled.png',
+            title: 'Elite Dangerous Web Connector',
+            message: 'Could not find a journal file ! Check your settings.'
+        })
+        setTimeout(() => {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icon_disabled.png',
+                title: 'Elite Dangerous Web Connector',
+                message: 'Please fix the problem and reload the extension once fixed.'
+            })
+        }, 8000)
     })
 }, 1 * 1000)
 
