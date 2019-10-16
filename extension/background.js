@@ -113,7 +113,8 @@ setInterval(() => {
 // Wait for getJournal command from content script (requested by page script)
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.ready) {
-        followTabIds.push(sender.tab.id)
+        if (!followTabIds.includes(sender.tab.id))
+            followTabIds.push(sender.tab.id)
         // Check if website is toggled or not
         if (enabledWebsites.includes(request.hostname)) {
             chrome.tabs.sendMessage(sender.tab.id, {
@@ -174,6 +175,10 @@ function checkActiveTab() {
 // Detect tab change
 chrome.tabs.onActivated.addListener(() => {
     checkActiveTab()
+})
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+    followTabIds.remove(followTabIds.indexOf(tabId))
 })
 
 checkActiveTab()
