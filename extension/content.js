@@ -13,7 +13,6 @@ function sendMessage(eventName, data) {
 
 function initialize() {
     // Short function to reduce redundancy
-    sendMessage('enabled')
 
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log(request)
