@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Elite Journal Connector</title>
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@4.5.95/css/materialdesignicons.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/vuetify@2.1.3/dist/vuetify.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+
+<body>
+    <div id="app">
+        <v-app dark="true">
+            <v-content>
+                <v-app-bar>
+                    <v-toolbar-title>Elite Journal Connector</v-toolbar-title>
+                    <v-spacer></v-spacer>
+                    <v-toolbar-items>
+                        <v-btn text :color="loaded ? `green` : `red`">{{ extensionStatus }}</v-btn>
+                        <v-btn text color="orange">{{ currentSystem }}</v-btn>         
+                    </v-toolbar-items>
+                    <v-spacer></v-spacer>
+
+                </v-app-bar>
+                <v-container>
+                    <v-timeline clipped reverse="true">
+                        <v-slide-x-transition group>
+                            <v-timeline-item color="orange" v-for="event in sortedEvents" :key="event.timestamp" class="mb-4"
+                                color="pink" small>
+                                <span slot="opposite">{{ event.timestamp }}</span>
+                                <v-card class="elevation-2">
+                                    <v-card-title class="headline">{{ event.StarSystem }}</v-card-title>
+                                    <v-card-text>
+                                        
+                                    </v-card-text>
+                            </v-timeline-item>
+                        </v-slide-x-transition>
+                    </v-timeline>
+                </v-container>
+                <v-overlay :value="loading">
+                    <v-progress-circular indeterminate size="64"></v-progress-circular>
+                </v-overlay>
+            </v-content>
+        </v-app>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vuetify@2.1.3/dist/vuetify.js"></script>
+    <script>
+        Vue.config.devtools = true;
+        var vm = new Vue({
+            el: '#app',
+            vuetify: new Vuetify({
+                theme: {
+                    dark: true
+                },
+            }),
+            data: {
+                events: [],
+                loaded: false,
+                loading: false,
+                currentSystem: 'Unknown System'
+            },
+            computed: {
+                extensionStatus() {
+                    return this.loaded ? 'ONLINE' : 'OFFLINE'
+                },
+                sortedEvents() {
+                    return this.events.sort((e1, e2) => {
+                        var d1 = Date.parse(e1.timestamp)
+                        var d2 = Date.parse(e2.timestamp)
+                        if (d1 > d2)
+                            return -1
+                        if (d1 < d2)
+                            return 1
+                        return 0
+                    })
+                }
+            },
+            mounted() {
+                window.addEventListener("message", (message) => {
+                    if (message.source != window)
+                        return
+                    if (message.data.origin && event.data.origin === 'Elite Dangerous Web Journal') {
+                        this.$nextTick(() => {
+                            switch (message.data.eventName) {
+                                case 'enabled':
+                                    this.loaded = true
+                                    this.loading = true
+                                    window.postMessage({ // Ask for initial, full journal data
+                                        origin: 'Elite Dangerous Web Journal',
+                                        eventName: 'getJournal'
+                                    })
+                                    break
+                                case 'disabled':
+                                    this.loaded = false
+                                    this.loading = false
+                                    this.events = []
+                                    console.log('Extension has been disabled')
+                                    break
+                                case 'journal':
+                                    const journal = message.data.data
+                                    this.loading = false;
+                                    // Parse all events
+                                    journal.map(e => this.parseEvent(e))
+                                    break;
+                                case 'event':
+                                    var journalEvent = message.data.data
+                                    this.parseEvent(journalEvent)
+                                    break;
+                            }
+                        })
+                    }
+                })
+            },
+            methods: {
+                parseEvent(journalEvent) {
+                    switch (journalEvent.event) {
+                        case 'FSDJump':
+                            this.currentSystem = journalEvent.StarSystem
+                            this.events.push(journalEvent)
+                            console.log(journalEvent)
+                            break;
+                        default:
+                            break
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
