@@ -182,6 +182,7 @@ function checkActiveTab() {
         })
     })
 }
+
 // Detect tab change
 chrome.tabs.onActivated.addListener(() => {
     checkActiveTab()
