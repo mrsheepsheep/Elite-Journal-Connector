@@ -184,9 +184,9 @@ function checkActiveTab() {
 }
 
 // Detect tab change
-chrome.tabs.onActivated.addListener(() => {
-    checkActiveTab()
-})
+chrome.tabs.onUpdated.addListener(checkActiveTab)
+
+chrome.tabs.onActivated.addListener(checkActiveTab)
 
 chrome.tabs.onRemoved.addListener((tabId) => {
     followTabIds.remove(followTabIds.indexOf(tabId))
@@ -195,3 +195,4 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 checkActiveTab()
 
 // Todo EDDN contribution :o
+// todo still duplication bug if switch tab

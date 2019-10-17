@@ -14,32 +14,78 @@
 
 <body>
     <div id="app">
-        <v-app dark="true">
+        <v-app>
             <v-content>
                 <v-app-bar>
-                    <v-toolbar-title>Elite Journal Connector</v-toolbar-title>
+                    <v-toolbar-title>Elite Dangerous Web Journal</v-toolbar-title>
                     <v-spacer></v-spacer>
                     <v-toolbar-items>
                         <v-btn text :color="loaded ? `green` : `red`">{{ extensionStatus }}</v-btn>
                         <v-btn text color="orange">{{ currentSystem }}</v-btn>         
                     </v-toolbar-items>
                 </v-app-bar>
-                <v-container>
+                <v-container fluid>
                     <v-row justify="center">
-                        <v-col cols="6">
-                            <v-timeline clipped>
-                                <v-slide-x-transition group>
-                                    <v-timeline-item color="orange" v-for="event in sortedEvents" :key="event.timestamp" class="mb-4"
-                                        color="pink" small>
-                                        <span slot="opposite">{{ event.timestamp }}</span>
-                                        <v-card class="elevation-2">
-                                            <v-card-title class="headline">{{ event.StarSystem }}</v-card-title>
-                                            <v-card-text>
-                                                
-                                            </v-card-text>
+                        <v-col xs="6" md="3">
+                            <v-btn @click="selectedSystem = null" :disabled="selectedSystem === null">Show all</v-btn>
+                            <v-timeline clipped dense>
+                                <v-slide-y-transition group>
+                                    <v-timeline-item color="orange" v-for="system in systemsReversed" :key="system" class="mb-4" small>
+                                        <template v-slot:icon>
+                                            <v-avatar>
+                                                <v-img :src="system.StarImage"/>
+                                            </v-avatar>
+                                        </template>
+                                        <v-btn @click="selectedSystem = system" :disabled="system === selectedSystem">{{ system.StarSystem }}</v-btn>
                                     </v-timeline-item>
                                 </v-slide-x-transition>
                             </v-timeline>
+                        </v-col>
+                        <v-col xs="6" md="9">
+                            <v-card class="elevation-2">
+                                <v-card-title class="headline">
+                                    <template v-if="selectedSystem">
+                                        {{ selectedSystem.StarSystem }} ({{ getCompletionPercentage(selectedSystem.StarSystem) }}%)
+                                        <v-tooltip bottom>
+                                            <template v-slot:activator="{ on }">
+                                                <v-icon class="mx-1" small dark v-on="on">mdi-help-circle</v-icon>
+                                            </template>
+                                            <span>Honk to update this value</span>
+                                        </v-tooltip>
+                                        <v-spacer></v-spacer>
+                                        {{ selectedSystem.EDSMValues.estimatedValueMapped }} CR
+                                        <v-spacer></v-spacer>
+                                        {{ selectedSystem.EDSMBodies.bodyCount}} bodies
+                                    </template>
+                                    <template v-else>
+                                        All acquired data
+                                    </template>
+                                </v-card-title>
+                                <v-card-text>
+                                    <v-data-table :headers="tableHeaders" :items="getTableData(getBodies(selectedSystem ? selectedSystem.StarSystem : null))" :items-per-page="10">
+                                        <template v-slot:item="{ item }">
+                                            <tr>
+                                                <td>{{ item.BodyName }}</td>
+                                                <td>{{ item.Type }}</td>
+                                                <td>{{ Math.round(item.DistanceFromArrivalLS) }}</td>
+                                                <td>{{ item.EstimatedMappedValue ||  ''}}</td>
+                                                <td class="text-center">
+                                                    <v-icon dark>{{ item.IsMapped ? 'mdi-check' : '' }}</v-icon>
+                                                </td>
+                                                <td class="text-center">
+                                                    <v-icon dark>{{ item.WasDiscovered ? 'mdi-check' : '' }}</v-icon>
+                                                </td>
+                                                <td class="text-center">
+                                                    <v-icon dark>{{ item.WasMapped ? 'mdi-check' : '' }}</v-icon>
+                                                </td>
+                                            </tr>
+                                        </template>
+                                    </v-data-table>
+                                </v-card-text>
+                            </v-card>
+                            <v-switch color="orange" text hide-detail
+                                label="Show table when jumping" v-model="followJump">
+                            </v-switch>
                         </v-col>
                     </v-row>
                 </v-container>
@@ -52,7 +98,54 @@
 
     <script src="https://cdn.jsdelivr.net/npm/vue"></script>
     <script src="https://cdn.jsdelivr.net/npm/vuetify@2.1.3/dist/vuetify.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script>
+        const starImages = {
+            'O (Blue-White) Star': 1,
+            'B (Blue-White) Star': 2,
+            'B (Blue-White super giant) Star': undefined,
+            'A (Blue-White) Star': 3,
+            'A (Blue-White super giant) Star': 3,
+            'F (White) Star': 4,
+            'F (White super giant) Star': 4,
+            'G (White-Yellow) Star': 5,
+            'G (White-Yellow super giant) Star': 5,
+            'K (Yellow-Orange) Star': 6,
+            'K (Yellow-Orange giant) Star': 6,
+            'M (Red dwarf) Star': 7,
+            'M (Red giant) Star': 7,
+            'M (Red super giant) Star': 7,
+            'L (Brown dwarf) Star': 8,
+            'T (Brown dwarf) Star': 9,
+            'Y (Brown dwarf) Star': 10,
+            'T Tauri Star': 11,
+            'Herbig Ae/Be Star': 12,
+            'Wolf-Rayet Star': 21,
+            'Wolf-Rayet N Star': 22,
+            'Wolf-Rayet NC Star': 23,
+            'Wolf-Rayet C Star': 24,
+            'Wolf-Rayet O Star': 25,
+            'C Star': 32,
+            'CN Star': 33,
+            'CJ Star': 34,
+            'MS-type Star': 41,
+            'S-type Star': 42,
+            'White Dwarf (D) Star': 51,
+            'White Dwarf (DA) Star': 51,
+            'White Dwarf (DAB) Star': 51,
+            'White Dwarf (DAZ) Star': 51,
+            'White Dwarf (DAV) Star': 51,
+            'White Dwarf (DB) Star': 51,
+            'White Dwarf (DBZ) Star': 51,
+            'White Dwarf (DBV) Star': 51,
+            'White Dwarf (DQ) Star': 51,
+            'White Dwarf (DC) Star': 51,
+            'White Dwarf (DCV) Star': 51,
+            'Neutron Star': 91,
+            'Black Hole': 92,
+            'Supermassive Black Hole': 92
+        }
+
         Vue.config.devtools = true;
         var vm = new Vue({
             el: '#app',
@@ -63,9 +156,20 @@
             }),
             data: {
                 events: [],
+                currentSystem: 'Unknown System',
+                selectedSystem: null,
+                followJump: true,
                 loaded: false,
                 loading: false,
-                currentSystem: 'Unknown System'
+                tableHeaders: [
+                    { text: 'Name', value: 'BodyName' },
+                    { text: 'Type', value: 'Type' },
+                    { text: 'Distance (ls)', value: 'DistanceFromArrivalLS'},
+                    { text: 'Est. Value (mapped)', value: 'EstimatedMappedValue' },
+                    { text: 'Mapped', value: 'IsMapped', align: 'center'},
+                    { text: 'Discovered', value: 'WasDiscovered', align: 'center'},
+                    { text: 'Was mapped', value: 'WasMapped', align: 'center'}
+                ]
             },
             computed: {
                 extensionStatus() {
@@ -81,6 +185,23 @@
                             return 1
                         return 0
                     }).reverse()
+                },
+                systems() {
+                    return this.events.filter((event) => {
+                        switch (event.event) {
+                            case 'FSDJump':
+                            case 'Location':
+                                return true
+                            default:
+                                return false
+                        }
+                    })
+                },
+                systemsReversed() {
+                    return this.systems.reverse()
+                },
+                mappedBodies() {
+                    return this.events.filter(event => event.event === 'SAAScanComplete').map(event => event.BodyName)
                 }
             },
             mounted() {
@@ -113,6 +234,8 @@
                                 case 'event':
                                     var journalEvent = message.data.data
                                     this.parseEvent(journalEvent)
+                                    if (this.followJump && journalEvent.event === 'FSDJump')
+                                        this.selectedSystem = journalEvent.event
                                     break;
                             }
                         })
@@ -125,12 +248,119 @@
                         case 'Location':
                         case 'FSDJump':
                             this.currentSystem = journalEvent.StarSystem
-                            this.events.push(journalEvent)
-                            console.log(journalEvent)
+                            journalEvent.StarImage = ''
+                            journalEvent.EDSMBodies = null
+                            journalEvent.EDSMValues = null
+                            this.edsm(journalEvent)
                             break;
                         default:
                             break
                     }
+                    this.events.push(journalEvent)
+                },
+                // Get scanned bodies from journal, based on starsystem name
+                getBodies(starSystem) {
+                    var bodies
+                    if (starSystem !== null){
+                        var lastSystem = null
+                        bodies = this.events.filter((event) => {
+                            switch (event.event) {
+                                case 'FSDJump':
+                                case 'Location':
+                                    lastSystem = event.StarSystem
+                                    return false
+                                case 'DiscoveryScan':
+                                case 'Scan':
+                                    console.log(event)
+                                    return lastSystem === starSystem
+                                default: return false
+                            }
+                        })
+                    } else {
+                        bodies = this.events.filter(event => ['DiscoveryScan', 'Scan'].includes(event.event))
+                    }
+                    // Filter unique bodies by ID
+                    if (bodies.length > 0) {
+                        bodies = Array.from(new Set(bodies.map(body => body.BodyID)))
+                            .map(BodyID => {
+                                return Object.assign({ BodyID }, bodies.find(body => body.BodyID === BodyID))
+                            })
+                    }
+                    return bodies
+                },
+                getBodyValue(body, isMapped = false, efficient = true) {
+                    const isFirstMapped = body.WasMapped
+                    const isFirstDiscoverer = !body.WasDiscovered
+                    const q = 0.56591828
+                    const kValues = {
+                        'Metal rich body': 21790, // MR
+                        'Ammonia world': 96932, // AW
+                        '': 0, // GG1
+                        '': 0, // GG2 / HMC
+                        'High metal content body': 9654, // GG2 / HMC
+                        'Water world': 64831, // WW / ELW
+                        'Earthlike body': 64831 // WW / EWL
+                    }
+                    const kterraValues = {
+                        'High metal content body': 100677, // GG2 / HMC
+                        'Water world': 116295, // WW / ELW
+                        'Earthlike body': 116295,
+                    }
+                    var k = 300 // Everything else
+                    var kTerra = 93328 // Everything else
+
+                    if (kterraValues.hasOwnProperty(body.PlanetClass)) {
+                        k = kterraValues[body.PlanetClass]
+                    }
+                    else if (kValues.hasOwnProperty(body.PlanetClass)) {
+                        k = kValues[body.PlanetClass]
+                    }
+
+                    var mappingMultiplier = 1
+                    if (isMapped) {
+                        if (isFirstDiscoverer && isFirstMapped) {
+                            mappingMultiplier = 3.699622554;
+                        }
+                        else if (isFirstMapped) {
+                            mappingMultiplier = 8.0956;
+                        }
+                        else {
+                            mappingMultiplier = 3.3333333333;
+                        }
+                        mappingMultiplier *= (efficient) ? 1.25 : 1;
+                    }
+
+                    var value = Math.max(500, k + k * q * Math.pow(parseFloat(body.MassEM || body.StellarMass || body.MassMT ), 0.2) * mappingMultiplier)
+                    value *= isFirstDiscoverer ? 2.6 : 1
+                    return parseInt(Math.round(value))
+                },
+                getCompletionPercentage(starSystem) {
+                    const fssDiscoveryScans = this.events.filter(event => event.event === 'FSSDiscoveryScan' && event.SystemName === starSystem)
+                    if (fssDiscoveryScans.length > 0)
+                        return Math.round(fssDiscoveryScans.reverse()[0].Progress * 100)
+                    return 0
+                },
+                getTableData(bodies) {
+                    const table = bodies.map(body => Object.assign({
+                        EstimatedValue: this.getBodyValue(body),
+                        EstimatedMappedValue: this.getBodyValue(body, true),
+                        Type: body.PlanetClass || body.RingClass || body.StarType || ' '
+                    }, body)).map(body => Object.assign(body, {
+                        IsMapped: body.PlanetClass ? this.mappedBodies.includes(body.StarSystem) : true,
+                        WasMapped: body.PlanetClass ? body.WasMapped : true
+                    }))
+                    return table
+                },
+                edsm(event) {
+                    axios.get('https://www.edsm.net/api-system-v1/bodies?systemName=' + event.StarSystem)
+                    .then((result) => {
+                        event.EDSMBodies = result.data
+                        event.StarImage = 'https://www.edsm.net/img/bodies/stars/' + starImages[result.data.bodies.find(body => body.isMainStar).subType] + '.png'
+                    })
+                    axios.get('https://www.edsm.net/api-system-v1/estimated-value?systemName=' + event.StarSystem)
+                    .then((result) => {
+                        event.EDSMValues = result.data
+                    })
                 }
             }
         })
