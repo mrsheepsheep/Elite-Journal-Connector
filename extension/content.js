@@ -10,10 +10,13 @@ function sendMessage(eventName, data) {
     })
 }
 
+var lastMessages = {}
 function onChromeMessageListener(request) {
-    //console.log(request)
-    if (request.eventName === 'event' || request.eventName === 'status') {
-        sendMessage(request.eventName, request.data)
+    if (['event', 'status', 'modulesInfo', 'cargo', 'shipyard', 'outfitting', 'market'].includes(request.eventName)){
+        if (request.data.timestamp !== lastMessages[request.eventName]){
+            sendMessage(request.eventName, request.data)
+            lastMessages[request.eventName] = request.data.timestamp
+        }
     }
 }
 
