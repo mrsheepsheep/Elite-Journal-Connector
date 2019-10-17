@@ -133,7 +133,7 @@
                 window.addEventListener("message", (message) => {
                     if (message.source != window)
                         return
-                    if (message.data.origin && event.data.origin === 'Elite Dangerous Web Journal') {
+                    if (message.data.origin && message.data.origin === 'Elite Dangerous Web Journal') {
                         this.$nextTick(() => {
                             switch (message.data.eventName) {
                                 case 'enabled':

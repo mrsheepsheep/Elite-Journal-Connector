@@ -52,10 +52,14 @@
                                             </template>
                                             <span>Honk to update this value</span>
                                         </v-tooltip>
-                                        <v-spacer></v-spacer>
-                                        {{ selectedSystem.EDSMValues.estimatedValueMapped }} CR
-                                        <v-spacer></v-spacer>
-                                        {{ selectedSystem.EDSMBodies.bodyCount}} bodies
+                                        <template v-if="selectedSystem.EDSMValues">
+                                            <v-spacer></v-spacer>
+                                            {{ selectedSystem.EDSMValues.estimatedValueMapped }} CR
+                                        </template>
+                                        <template v-if="selectedSystem.EDSMBodies">
+                                            <v-spacer></v-spacer>
+                                            {{ selectedSystem.EDSMBodies.bodyCount}} bodies
+                                        </template>
                                     </template>
                                     <template v-else>
                                         All acquired data
@@ -208,7 +212,7 @@
                 window.addEventListener("message", (message) => {
                     if (message.source != window)
                         return
-                    if (message.data.origin && event.data.origin === 'Elite Dangerous Web Journal') {
+                    if (message.data.origin && message.data.origin === 'Elite Dangerous Web Journal') {
                         this.$nextTick(() => {
                             switch (message.data.eventName) {
                                 case 'enabled':
