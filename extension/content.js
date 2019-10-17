@@ -11,8 +11,8 @@ function sendMessage(eventName, data) {
 }
 
 function onChromeMessageListener(request) {
-    console.log(request)
-    if (request.eventName === 'event') {
+    //console.log(request)
+    if (request.eventName === 'event' || request.eventName === 'status') {
         sendMessage(request.eventName, request.data)
     }
 }

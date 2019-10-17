@@ -19,7 +19,6 @@ function findJournal(success, error) {
             for (var index = res.length - 1; index > 0; index--){
                 let line = res[index]
                 fileName = line.split('"')[0]
-
                 if (fileName.includes("Journal.") && fileName.includes("01.log")) {
                     journalFileName = fileName
                     break;
@@ -55,6 +54,23 @@ function getJournal(journalFile, handler){
     }
 }
 
+function getStatus(handler) {
+    $.ajax({
+        type: 'GET',
+        url: folder + '/Status.json',
+        success: function (res) {
+            handler(res)
+        },
+        error: function () {
+            chrome.notifications.create({
+                type: 'basic',
+                iconUrl: 'icon_disabled.png',
+                title: 'Elite Dangerous Web Connector',
+                message: 'Unable to load Status file'
+            })
+        }
+    })
+}
 
 function initialize(){
     findJournal((file) => {
@@ -89,6 +105,81 @@ function initialize(){
                 }
             }
         })
+
+        getStatus((res) => {
+            fullStatus = res.split('\n')
+            fullStatus.pop()
+            fullStatus = fullStatus.map(e => JSON.parse(e))
+            for (tab in followTabIds) {
+                chrome.tabs.sendMessage(followTabIds[tab], {
+                    eventName: 'status',
+                    data: fullStatus
+                })
+            }
+        })
+
+        /*
+        getModulesInfo((res) => {
+            modules = res.split('\n')
+            modules.pop()
+            modules = modules.map(e => JSON.parse(e))
+            for (tab in followTabIds) {
+                chrome.tabs.sendMessage(followTabIds[tab], {
+                    eventName: 'modulesInfo',
+                    data: modules
+                })
+            }
+        })
+
+        getCargo((res) => {
+            cargo = res.split('\n')
+            cargo.pop()
+            cargo = cargo.map(e => JSON.parse(e))
+            for (tab in followTabIds) {
+                chrome.tabs.sendMessage(followTabIds[tab], {
+                    eventName: 'cargo',
+                    data: cargo
+                })
+            }
+        })
+
+        getShipyard((res) => {
+            shipyard = res.split('\n')
+            shipyard.pop()
+            shipyard = shipyard.map(e => JSON.parse(e))
+            for (tab in followTabIds) {
+                chrome.tabs.sendMessage(followTabIds[tab], {
+                    eventName: 'shipyard',
+                    data: shipyard
+                })
+            }
+        })
+
+        getOutfitting((res) => {
+            outfit = res.split('\n')
+            outfit.pop()
+            outfit = outfit.map(e => JSON.parse(e))
+            for (tab in followTabIds) {
+                chrome.tabs.sendMessage(followTabIds[tab], {
+                    eventName: 'outfit',
+                    data: outfit
+                })
+            }
+        })
+
+        getMarket((res) => {
+            market = res.split('\n')
+            market.pop()
+            market = market.map(e => JSON.parse(e))
+            for (tab in followTabIds) {
+                chrome.tabs.sendMessage(followTabIds[tab], {
+                    eventName: 'market',
+                    data: market
+                })
+            }
+        })
+        */
+        
     }, 1000);
 }
 initialize()
