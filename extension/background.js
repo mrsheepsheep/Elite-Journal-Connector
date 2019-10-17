@@ -34,25 +34,26 @@ function findJournal(success, error) {
     })
 }
 
-function getJournal(journalFile, handler){
-    if (journalFile !== null){
+function getFile(fileName, handler) {
+    if (fileName !== null) {
         $.ajax({
             type: 'GET',
-            url: journalFile,
-            success: function(res) {
+            url: fileName,
+            success: function (res) {
                 handler(res)
             },
-            error: function(){
+            error: function () {
                 chrome.notifications.create({
                     type: 'basic',
                     iconUrl: 'icon_disabled.png',
                     title: 'Elite Dangerous Web Connector',
-                    message: 'Unable to load journal file located at ' + journalFile
+                    message: 'Unable to fetch ' + fileName
                 })
             }
         })
     }
 }
+
 
 function getStatus(handler) {
     $.ajax({
@@ -85,7 +86,7 @@ function initialize(){
     var lastRes = ''
     var t = this;
     updateInterval = setInterval(() => {
-        getJournal(journalFile, (res) => {
+        getFile(journalFile, (res) => {
             fulljournal = res.split('\n')
             fulljournal.pop()
             fulljournal = fulljournal.map(e => JSON.parse(e))
@@ -106,79 +107,60 @@ function initialize(){
             }
         })
 
-        getStatus((res) => {
-            fullStatus = res.split('\n')
-            fullStatus.pop()
-            fullStatus = fullStatus.map(e => JSON.parse(e))
+        getFile(folder + '/Status.json', (res) => {
             for (tab in followTabIds) {
                 chrome.tabs.sendMessage(followTabIds[tab], {
                     eventName: 'status',
-                    data: fullStatus
+                    data: JSON.parse(res)
                 })
             }
         })
 
-        /*
-        getModulesInfo((res) => {
-            modules = res.split('\n')
-            modules.pop()
-            modules = modules.map(e => JSON.parse(e))
+
+        getFile(folder + '/ModulesInfo.json', (res) => {
             for (tab in followTabIds) {
                 chrome.tabs.sendMessage(followTabIds[tab], {
                     eventName: 'modulesInfo',
-                    data: modules
+                    data: JSON.parse(res)
                 })
             }
         })
 
-        getCargo((res) => {
-            cargo = res.split('\n')
-            cargo.pop()
-            cargo = cargo.map(e => JSON.parse(e))
+        getFile(folder + '/Cargo.json', (res) => {
             for (tab in followTabIds) {
                 chrome.tabs.sendMessage(followTabIds[tab], {
                     eventName: 'cargo',
-                    data: cargo
+                    data: JSON.parse(res)
                 })
             }
         })
 
-        getShipyard((res) => {
-            shipyard = res.split('\n')
-            shipyard.pop()
-            shipyard = shipyard.map(e => JSON.parse(e))
+        getFile(folder + '/Shipyard.json', (res) => {
             for (tab in followTabIds) {
                 chrome.tabs.sendMessage(followTabIds[tab], {
                     eventName: 'shipyard',
-                    data: shipyard
+                    data: JSON.parse(res)
                 })
             }
         })
 
-        getOutfitting((res) => {
-            outfit = res.split('\n')
-            outfit.pop()
-            outfit = outfit.map(e => JSON.parse(e))
+        getFile(folder + '/Outfitting.json', (res) => {
             for (tab in followTabIds) {
                 chrome.tabs.sendMessage(followTabIds[tab], {
                     eventName: 'outfit',
-                    data: outfit
+                    data: JSON.parse(res)
                 })
             }
         })
 
-        getMarket((res) => {
-            market = res.split('\n')
-            market.pop()
-            market = market.map(e => JSON.parse(e))
+        getFile(folder + '/Market.json', (res) => {
             for (tab in followTabIds) {
                 chrome.tabs.sendMessage(followTabIds[tab], {
                     eventName: 'market',
-                    data: market
+                    data: JSON.parse(res)
                 })
             }
         })
-        */
         
     }, 1000);
 }
