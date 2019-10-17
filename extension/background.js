@@ -6,7 +6,7 @@ var updateInterval = null
 var enabledWebsites = []
 var followTabIds = []
 
-function findJournal(success, error) {
+function findJournal(success, error = () => {}) {
     // Get all files
     $.ajax({
         type: 'GET',
